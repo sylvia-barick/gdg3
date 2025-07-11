@@ -1,22 +1,55 @@
 import React, { useState } from 'react';
 import { Sparkles, Send } from 'lucide-react';
 import GlassContainer from './GlassContainer';
+import { getEvents } from '../utils/firebaseUtils';
+import { getRecommendations } from '../utils/geminiPrompt';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-interface RecommendationInputProps {
-  onGetRecommendations: (interests: string) => void;
-  isLoading?: boolean;
-}
-
-const RecommendationInput: React.FC<RecommendationInputProps> = ({ 
-  onGetRecommendations, 
-  isLoading = false 
-}) => {
+const RecommendationInput: React.FC = () => {
   const [interests, setInterests] = useState('');
+  const [recommendations, setRecommendations] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Move this function inside the component
+  const testGeminiConnection = async () => {
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    if (!apiKey) {
+      console.error("❌ Gemini API key is missing");
+      setRecommendations("❌ Gemini API key is missing");
+      return;
+    }
+
+    try {
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-001" });
+      const result = await model.generateContent("Say hello from Gemini!");
+      const response = await result.response;
+      const text = await response.text();
+
+      console.log("✅ Gemini says:", text);
+      setRecommendations(text);
+    } catch (err) {
+      console.error("❌ Gemini error:", err);
+      setRecommendations("❌ Gemini error: " + err);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (interests.trim()) {
-      onGetRecommendations(interests.trim());
+    if (!interests.trim()) return;
+
+    setIsLoading(true);
+
+    try {
+      const events = await getEvents();
+      console.log("Events:", events);
+      const recs = await getRecommendations(interests, events);
+      setRecommendations(typeof recs === 'string' ? recs : JSON.stringify(recs, null, 2));
+    } catch (error) {
+      console.error("Error generating recommendations:", error);
+      setRecommendations("Oops! Something went wrong.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -42,7 +75,7 @@ const RecommendationInput: React.FC<RecommendationInputProps> = ({
           <textarea
             value={interests}
             onChange={(e) => setInterests(e.target.value)}
-            placeholder="e.g., technology, programming, AI, startups, networking, technology development..."
+            placeholder="e.g., technology, programming, AI, startups, networking..."
             rows={4}
             className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-white/50 text-white resize-none"
           />
@@ -66,6 +99,22 @@ const RecommendationInput: React.FC<RecommendationInputProps> = ({
           )}
         </button>
       </form>
+
+      <button
+        type="button"
+        className="mt-4 w-full bg-green-500 text-white py-2 rounded-lg"
+        onClick={testGeminiConnection}
+      >
+        Test Gemini API (Say Hello)
+      </button>
+
+      {recommendations && (
+        <div className="mt-6 p-4 rounded-lg bg-white/10 text-white whitespace-pre-wrap">
+          <strong>Recommended Events:</strong>
+          <br />
+          {recommendations}
+        </div>
+      )}
     </GlassContainer>
   );
 };

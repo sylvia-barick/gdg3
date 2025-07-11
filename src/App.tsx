@@ -5,10 +5,13 @@ import AppRoutes from './routes/AppRoutes';
 import ParticleBackground from './components/ParticleBackground';
 import './index.css';
 
+// Initialize Firebase (app & analytics)
+
+
 function App() {
   return (
     <BrowserRouter>
-      <div className="relative min-h-screen bg-gradient-to-br from-[#181824] via-[#232336] to-[#101014] text-white font-sans overflow-hidden">
+      <div className="relative min-h-screen bg-gradient-to-br from-[#181824] via-[#232336] to-[#181824]">
         <ParticleBackground />
         <div className="relative z-10">
           <Navbar />
